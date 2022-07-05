@@ -1,0 +1,10 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+.vs
+/Pedido/.vs
+/Pedido/PedidoLibrary/bin
+/Pedido/PedidoLibrary/obj
+/Pedido/PedidoLibrary.Tests/bin
+/Pedido/PedidoLibrary.Tests/obj
