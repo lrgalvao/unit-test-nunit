@@ -1,35 +1,32 @@
 ﻿using FizzWare.NBuilder;
+using FluentAssertions;
 using MediatR;
 using Moq;
+using Moq.AutoMock;
 using NUnit.Framework;
 using PedidoLibrary.Entidades;
 using PedidoLibrary.Repositorios;
 using PedidoLibrary.Servicos;
+using PedidoLibrary.Servicos.Impl;
 using PedidoLibrary.Util;
 using PedidoLibrary.Util.Notificacoes;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace PedidoLibrary.Tests.Servicos
 {
-	public class PedidoServiceTests
+	public class PedidoServiceTestsV2
 	{
-		private readonly Mock<IPedidoRepository> mockPedidoRepository = new();
-		private readonly Mock<IEmailService> mockEmailService = new();
-		private readonly Mock<IMediator> mockMediator = new();
-
+		private readonly AutoMocker _mocker = new();
 		private IPedidoService _pedidoService;
-		
-		public PedidoServiceTests()
-		{
-			//_pedidoService = new PedidoService(mockPedidoRepository.Object, mockEmailService.Object, mockMediator.Object);
-		}
 
 		[SetUp]
 		public void ConfigurarTeste()
 		{
-			_pedidoService = new PedidoService(mockPedidoRepository.Object, mockEmailService.Object, mockMediator.Object);
+			_pedidoService = _mocker.CreateInstance<PedidoService>();
 		}
 
 		[Test]
@@ -49,9 +46,9 @@ namespace PedidoLibrary.Tests.Servicos
 			var pedido = _pedidoService.CriarPedido(cliente, false);
 
 			// Assert
-			Assert.IsNotNull(pedido.Id);
-			Assert.IsEmpty(pedido.ProdutosSelecionados);
-			Assert.AreEqual(cliente, pedido.Cliente);
+			pedido.Id.Should().NotBeEmpty();
+			pedido.ProdutosSelecionados.Should().BeEmpty();
+			pedido.Cliente.Should().BeEquivalentTo(cliente);
 		}
 
 		[Test]
@@ -68,9 +65,9 @@ namespace PedidoLibrary.Tests.Servicos
 			var pedido = _pedidoService.CriarPedido(cliente, false);
 
 			// Assert
-			Assert.IsNotNull(pedido.Id);
-			Assert.IsEmpty(pedido.ProdutosSelecionados);
-			Assert.AreEqual(cliente, pedido.Cliente);
+			pedido.Id.Should().NotBeEmpty();
+			pedido.ProdutosSelecionados.Should().BeEmpty();
+			pedido.Cliente.Should().BeEquivalentTo(cliente);
 		}
 
 		[Test]
@@ -79,11 +76,12 @@ namespace PedidoLibrary.Tests.Servicos
 			// Arrange
 			var cliente = Builder<Cliente>.CreateNew().Build();
 
-			// Act
-			var excecao = Assert.Throws<NegocioException>(() => _pedidoService.CriarPedido(cliente, true));
-
-			// Assert
-			Assert.AreEqual(Mensagens.M04_CLIENTE_INVALIDO, excecao.Message);
+			// Act, Assert
+			_pedidoService
+				.Invoking(p => p.CriarPedido(cliente, true))
+				.Should()
+				.Throw<NegocioException>()
+				.WithMessage(Mensagens.M04_CLIENTE_INVALIDO);
 		}
 
 		[Test]
@@ -109,17 +107,17 @@ namespace PedidoLibrary.Tests.Servicos
 				= Builder<Pedido>.CreateNew()
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
-					.With(pedido => pedido.ProdutosSelecionados = new Dictionary<Produto, int>())
+					.With(pedido => pedido.ProdutosSelecionados = new List<PedidoProduto>())
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
 			// Act
 			_pedidoService.AdicionarProduto(idPedido, produto, quantidade);
 
 			// Assert
-			mockPedidoRepository.Verify(mock => mock.Atualizar(pedido), Times.Once());
-			Assert.AreEqual(quantidade * valorProduto, pedido.ValorTotal());
+			_mocker.GetMock<IPedidoRepository>().Verify(mock => mock.Atualizar(pedido), Times.Once());
+			pedido.ValorTotal().Should().Be(quantidade * valorProduto);
 		}
 
 		[Test]
@@ -144,16 +142,17 @@ namespace PedidoLibrary.Tests.Servicos
 				= Builder<Pedido>.CreateNew()
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
-					.With(pedido => pedido.ProdutosSelecionados = new Dictionary<Produto, int>())
+					.With(pedido => pedido.ProdutosSelecionados = new List<PedidoProduto>())
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
-			// Act
-			var excecao = Assert.Throws<NegocioException>(() => _pedidoService.AdicionarProduto(idPedido, produto, quantidade));
-
-			// Assert
-			Assert.AreEqual(Mensagens.M01_PRODUTO_INVALIDO, excecao.Message);
+			// Act, Assert
+			_pedidoService
+				.Invoking(p => p.AdicionarProduto(idPedido, produto, quantidade))
+				.Should()
+				.Throw<NegocioException>()
+				.WithMessage(Mensagens.M01_PRODUTO_INVALIDO);
 		}
 
 		[Test]
@@ -179,16 +178,17 @@ namespace PedidoLibrary.Tests.Servicos
 				= Builder<Pedido>.CreateNew()
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
-					.With(pedido => pedido.ProdutosSelecionados = new Dictionary<Produto, int>())
+					.With(pedido => pedido.ProdutosSelecionados = new List<PedidoProduto>())
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
-			// Act
-			var excecao = Assert.Throws<NegocioException>(() => _pedidoService.AdicionarProduto(idPedido, produto, quantidade));
-
-			// Assert
-			Assert.AreEqual(Mensagens.M02_QTDE_PRODUTOS_INVALIDA, excecao.Message);
+			// Act, Assert
+			_pedidoService
+				.Invoking(p => p.AdicionarProduto(idPedido, produto, quantidade))
+				.Should()
+				.Throw<NegocioException>()
+				.WithMessage(Mensagens.M02_QTDE_PRODUTOS_INVALIDA);
 		}
 
 		[Test]
@@ -210,13 +210,14 @@ namespace PedidoLibrary.Tests.Servicos
 					.With(produto => produto.Valor = valorProduto)
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(It.IsAny<Guid>())).Returns(() => null);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(It.IsAny<Guid>())).Returns(() => null);
 
-			// Act
-			var excecao = Assert.Throws<NegocioException>(() => _pedidoService.AdicionarProduto(idPedido, produto, quantidade));
-
-			// Assert
-			Assert.AreEqual(Mensagens.M03_PEDIDO_NAO_EXISTE, excecao.Message);
+			// Act, Assert
+			_pedidoService
+				.Invoking(p => p.AdicionarProduto(idPedido, produto, quantidade))
+				.Should()
+				.Throw<NegocioException>()
+				.WithMessage(Mensagens.M03_PEDIDO_NAO_EXISTE);
 		}
 
 		[Test]
@@ -242,17 +243,18 @@ namespace PedidoLibrary.Tests.Servicos
 				= Builder<Pedido>.CreateNew()
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
-					.With(pedido => pedido.ProdutosSelecionados = new Dictionary<Produto, int>())
+					.With(pedido => pedido.ProdutosSelecionados = new List<PedidoProduto>())
 					.With(pedido => pedido.EhExpress = true)
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
-			// Act
-			var excecao = Assert.Throws<NegocioException>(() => _pedidoService.AdicionarProduto(idPedido, produto, quantidade));
-
-			// Assert
-			Assert.AreEqual(Mensagens.M10_PRODUTO_NAO_DISPONIVEL_EXPRESS, excecao.Message);
+			// Act, Assert
+			_pedidoService
+				.Invoking(p => p.AdicionarProduto(idPedido, produto, quantidade))
+				.Should()
+				.Throw<NegocioException>()
+				.WithMessage(Mensagens.M10_PRODUTO_NAO_DISPONIVEL_EXPRESS);
 		}
 
 		[Test]
@@ -278,21 +280,25 @@ namespace PedidoLibrary.Tests.Servicos
 				= Builder<Pedido>.CreateNew()
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
-					.With(pedido => pedido.ProdutosSelecionados 
-						= new Dictionary<Produto, int>()
-						{
-							{ produto, quantidade }
-						})
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			pedido.ProdutosSelecionados
+				= Builder<PedidoProduto>.CreateListOfSize(1)
+					.TheFirst(1)
+						.With(pedidoProduto => pedidoProduto.Pedido = pedido)
+						.With(pedidoProduto => pedidoProduto.Produto = produto)
+						.With(pedidoProduto => pedidoProduto.Quantidade = quantidade)
+					.Build();
+
+
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
 			// Act
 			_pedidoService.RemoverProduto(idPedido, produto, 1);
 
 			// Assert
-			mockPedidoRepository.Verify(mock => mock.Atualizar(pedido), Times.Once());
-			Assert.AreEqual((quantidade - 1) * valorProduto, pedido.ValorTotal());
+			_mocker.GetMock<IPedidoRepository>().Verify(mock => mock.Atualizar(pedido), Times.Once());
+			pedido.ValorTotal().Should().Be((quantidade - 1) * valorProduto);
 		}
 
 		[Test]
@@ -317,22 +323,25 @@ namespace PedidoLibrary.Tests.Servicos
 			var pedido
 				= Builder<Pedido>.CreateNew()
 					.With(pedido => pedido.Id = idPedido)
-					.With(pedido => pedido.Cliente = cliente)
-					.With(pedido => pedido.ProdutosSelecionados
-						= new Dictionary<Produto, int>()
-						{
-							{ produto, quantidade }
-						})
+					.With(pedido => pedido.Cliente = cliente)					
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			pedido.ProdutosSelecionados
+				= Builder<PedidoProduto>.CreateListOfSize(1)
+					.TheFirst(1)
+						.With(pedidoProduto => pedidoProduto.Pedido = pedido)
+						.With(pedidoProduto => pedidoProduto.Produto = produto)
+						.With(pedidoProduto => pedidoProduto.Quantidade = quantidade)
+					.Build();
+
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
 			// Act
 			_pedidoService.RemoverProduto(idPedido, produto);
 
 			// Assert
-			mockPedidoRepository.Verify(mock => mock.Atualizar(pedido), Times.Once());
-			Assert.AreEqual(0, pedido.ValorTotal());
+			_mocker.GetMock<IPedidoRepository>().Verify(mock => mock.Atualizar(pedido), Times.Once());
+			pedido.ValorTotal().Should().Be(0);
 		}
 
 		[Test]
@@ -358,20 +367,24 @@ namespace PedidoLibrary.Tests.Servicos
 				= Builder<Pedido>.CreateNew()
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
-					.With(pedido => pedido.ProdutosSelecionados
-						= new Dictionary<Produto, int>()
-						{
-							{ produto, quantidade }
-						})
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			pedido.ProdutosSelecionados
+				= Builder<PedidoProduto>.CreateListOfSize(1)
+					.TheFirst(1)
+						.With(pedidoProduto => pedidoProduto.Pedido = pedido)
+						.With(pedidoProduto => pedidoProduto.Produto = produto)
+						.With(pedidoProduto => pedidoProduto.Quantidade = quantidade)
+					.Build();
 
-			// Act
-			var excecao = Assert.Throws<NegocioException>(() => _pedidoService.RemoverProduto(idPedido, produto, -1));
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
-			// Assert
-			Assert.AreEqual(Mensagens.M02_QTDE_PRODUTOS_INVALIDA, excecao.Message);
+			// Act, Assert
+			_pedidoService
+				.Invoking(p => p.RemoverProduto(idPedido, produto, -1))
+				.Should()
+				.Throw<NegocioException>()
+				.WithMessage(Mensagens.M02_QTDE_PRODUTOS_INVALIDA);
 		}
 
 		[Test]
@@ -398,32 +411,35 @@ namespace PedidoLibrary.Tests.Servicos
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
 					.With(pedido => pedido.Estado = EstadoPedidoEnum.Aberto)
-					.With(pedido => pedido.ProdutosSelecionados
-						= new Dictionary<Produto, int>()
-						{
-							{ produto, quantidade }
-						})
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			pedido.ProdutosSelecionados
+				= Builder<PedidoProduto>.CreateListOfSize(1)
+					.TheFirst(1)
+						.With(pedidoProduto => pedidoProduto.Pedido = pedido)
+						.With(pedidoProduto => pedidoProduto.Produto = produto)
+						.With(pedidoProduto => pedidoProduto.Quantidade = quantidade)
+					.Build();
+
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
 			// Act
 			_pedidoService.FinalizarPedido(idPedido);
 
 			// Assert
-			mockPedidoRepository.Verify(mock => 
+			_mocker.GetMock<IPedidoRepository>().Verify(mock => 
 				mock.Atualizar(pedido), 
 				Times.Once());
 
-			mockMediator.Verify(mock => 
+			_mocker.GetMock<IMediator>().Verify(mock => 
 				mock.Publish(It.IsAny<PedidoFinalizadoNotification>(), It.IsAny<CancellationToken>()), 
 				Times.Once());
 
-			mockEmailService.Verify(mock => 
+			_mocker.GetMock<IEmailService>().Verify(mock => 
 				mock.EnviarEmail(cliente.Email, It.IsAny<string>(), It.IsAny<string>()), 
 				Times.Once());
 
-			Assert.AreEqual(EstadoPedidoEnum.Finalizado, pedido.Estado);
+			pedido.Estado.Should().Be(EstadoPedidoEnum.Finalizado);
 		}
 
 		[Test]
@@ -450,43 +466,46 @@ namespace PedidoLibrary.Tests.Servicos
 					.With(pedido => pedido.Id = idPedido)
 					.With(pedido => pedido.Cliente = cliente)
 					.With(pedido => pedido.Estado = EstadoPedidoEnum.Aberto)
-					.With(pedido => pedido.ProdutosSelecionados
-						= new Dictionary<Produto, int>()
-						{
-							{ produto, quantidade }
-						})
 					.Build();
 
-			mockPedidoRepository.Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
+			pedido.ProdutosSelecionados
+				= Builder<PedidoProduto>.CreateListOfSize(1)
+					.TheFirst(1)
+						.With(pedidoProduto => pedidoProduto.Pedido = pedido)
+						.With(pedidoProduto => pedidoProduto.Produto = produto)
+						.With(pedidoProduto => pedidoProduto.Quantidade = quantidade)
+					.Build();
+
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterPorId(idPedido)).Returns(() => pedido);
 
 			// Act
 			_pedidoService.CancelarPedido(idPedido);
 
 			// Assert
-			mockPedidoRepository.Verify(mock =>
+			_mocker.GetMock<IPedidoRepository>().Verify(mock =>
 				mock.Atualizar(pedido),
 				Times.Once());
 
-			mockMediator.Verify(mock =>
+			_mocker.GetMock<IMediator>().Verify(mock =>
 				mock.Publish(It.IsAny<PedidoCanceladoNotification>(), It.IsAny<CancellationToken>()),
 				Times.Once());
 
-			Assert.AreEqual(EstadoPedidoEnum.Cancelado, pedido.Estado);
+			pedido.Estado.Should().Be(EstadoPedidoEnum.Cancelado);
 		}
 
 		[Test]
-		public void PedidoService_ObterPedidos_SemFiltro()
+		public async Task PedidoService_ObterPedidos_SemFiltroAsync()
 		{
 			// Arrange
 			IList<Pedido> todosPedidos = ConstruirPedidos();
 
-			mockPedidoRepository.Setup(mock => mock.ObterTodos()).Returns(() => todosPedidos);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterTodosAsync()).Returns(() => Task.FromResult(todosPedidos.ToList()));
 
 			// Act
-			var pedidos = _pedidoService.ObterPedidos();
+			var pedidos = await _pedidoService.ObterPedidosAsync();
 
 			// Assert
-			Assert.AreEqual(5, pedidos.Count);
+			pedidos.Should().HaveCount(5);
 		}
 
 		[TestCase("Antonio", 2)]
@@ -498,20 +517,20 @@ namespace PedidoLibrary.Tests.Servicos
 		[TestCase(" ", 5)]
 		[TestCase("", 5)]
 		[TestCase(null, 5)]
-		public void PedidoService_ObterPedidos_FiltroPorTermo(string termo, int qtdePedidosObtidos)
+		public async Task PedidoService_ObterPedidos_FiltroPorTermoAsync(string termo, int qtdePedidosObtidos)
 		{
 			// Arrange
 			IList<Pedido> todosPedidos = ConstruirPedidos();
 
-			mockPedidoRepository.Setup(mock => mock.ObterTodos()).Returns(() => todosPedidos);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterTodosAsync()).Returns(() => Task.FromResult(todosPedidos.ToList()));
 
 			var filtro = new PedidoFilter { Termo = termo };
 
 			// Act
-			var pedidos = _pedidoService.ObterPedidos(filtro);
+			var pedidos = await _pedidoService.ObterPedidosAsync(filtro);
 
 			// Assert
-			Assert.AreEqual(qtdePedidosObtidos, pedidos.Count);
+			pedidos.Should().HaveCount(qtdePedidosObtidos);
 		}
 
 		[TestCase(new [] { EstadoPedidoEnum.Aberto }, 3)]
@@ -520,12 +539,12 @@ namespace PedidoLibrary.Tests.Servicos
 		[TestCase(new [] { EstadoPedidoEnum.Aberto, EstadoPedidoEnum.Finalizado }, 4)]
 		[TestCase(new EstadoPedidoEnum[] { }, 5)]
 		[TestCase(null, 5)]
-		public void PedidoService_ObterPedidos_FiltroPorEstados(EstadoPedidoEnum[] estados, int qtdePedidosObtidos)
+		public async Task PedidoService_ObterPedidos_FiltroPorEstadosAsync(EstadoPedidoEnum[] estados, int qtdePedidosObtidos)
 		{
 			// Arrange
 			IList<Pedido> todosPedidos = ConstruirPedidos();
 
-			mockPedidoRepository.Setup(mock => mock.ObterTodos()).Returns(() => todosPedidos);
+			_mocker.GetMock<IPedidoRepository>().Setup(mock => mock.ObterTodosAsync()).Returns(() => Task.FromResult(todosPedidos.ToList()));
 
 			var filtro
 				= new PedidoFilter
@@ -534,10 +553,10 @@ namespace PedidoLibrary.Tests.Servicos
 				};
 
 			// Act
-			var pedidos = _pedidoService.ObterPedidos(filtro);
+			var pedidos = await _pedidoService.ObterPedidosAsync(filtro);
 
 			// Assert
-			Assert.AreEqual(qtdePedidosObtidos, pedidos.Count);
+			pedidos.Should().HaveCount(qtdePedidosObtidos);
 		}
 
 		private static IList<Produto> ConstruirProdutos()
@@ -590,52 +609,74 @@ namespace PedidoLibrary.Tests.Servicos
 						.With(pedido => pedido.Cliente = clientes[0])
 						.With(pedido => pedido.Estado = EstadoPedidoEnum.Aberto)
 						.With(pedido => pedido.ProdutosSelecionados
-							= new Dictionary<Produto, int>()
-							{
-								{ produtos[0], 2 },
-								{ produtos[1], 1 }
-							})
+							= Builder<PedidoProduto>.CreateListOfSize(2)
+								.All().With(pedidoProduto => pedidoProduto.Pedido = pedido)
+								.TheFirst(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[0])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 2)
+								.TheNext(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[1])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 1)
+								.Build())
 					// Pedido 2: Antonio Jobim, Cadeira: 1000 (2) / Mesa: 500 (3), Finalizado
 					.TheNext(1)
 						.With(pedido => pedido.Cliente = clientes[0])
 						.With(pedido => pedido.Estado = EstadoPedidoEnum.Finalizado)
 						.With(pedido => pedido.ProdutosSelecionados
-							= new Dictionary<Produto, int>()
-							{
-								{ produtos[1], 2 },
-								{ produtos[2], 3 }
-							})
+							= Builder<PedidoProduto>.CreateListOfSize(2)
+								.All().With(pedidoProduto => pedidoProduto.Pedido = pedido)
+								.TheFirst(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[1])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 2)
+								.TheNext(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[2])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 3)
+								.Build())
 					// Pedido 3: Chico Buarque, Monitor: 1500 (1) / Cadeira: 1000 (2) / Mesa: 500 (2), Aberto
 					.TheNext(1)
 						.With(pedido => pedido.Cliente = clientes[1])
 						.With(pedido => pedido.Estado = EstadoPedidoEnum.Aberto)
 						.With(pedido => pedido.ProdutosSelecionados
-							= new Dictionary<Produto, int>()
-							{
-								{ produtos[0], 1 },
-								{ produtos[1], 2 },
-								{ produtos[2], 2 }
-							})
+							= Builder<PedidoProduto>.CreateListOfSize(3)
+								.All().With(pedidoProduto => pedidoProduto.Pedido = pedido)
+								.TheFirst(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[0])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 1)
+								.TheNext(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[1])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 2)
+								.TheNext(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[2])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 2)
+								.Build())
 					// Pedido 4: Elis Regina, Cadeira: 1000 (2) / Mesa: 500 (4), Aberto
 					.TheNext(1)
 						.With(pedido => pedido.Cliente = clientes[2])
 						.With(pedido => pedido.Estado = EstadoPedidoEnum.Aberto)
 						.With(pedido => pedido.ProdutosSelecionados
-							= new Dictionary<Produto, int>()
-							{
-								{ produtos[1], 2 },
-								{ produtos[2], 4 }
-							})
+							= Builder<PedidoProduto>.CreateListOfSize(2)
+								.All().With(pedidoProduto => pedidoProduto.Pedido = pedido)
+								.TheFirst(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[1])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 2)
+								.TheNext(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[2])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 4)
+								.Build())
 					// Pedido 5: Elis Regina, Cadeira: 1000 (1) / Mesa: 500 (3), Cancelado
 					.TheNext(1)
 						.With(pedido => pedido.Cliente = clientes[2])
 						.With(pedido => pedido.Estado = EstadoPedidoEnum.Cancelado)
 						.With(pedido => pedido.ProdutosSelecionados
-							= new Dictionary<Produto, int>()
-							{
-								{ produtos[1], 1 },
-								{ produtos[2], 3 }
-							})
+							= Builder<PedidoProduto>.CreateListOfSize(2)
+								.All().With(pedidoProduto => pedidoProduto.Pedido = pedido)
+								.TheFirst(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[1])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 1)
+								.TheNext(1)
+									.With(pedidoProduto => pedidoProduto.Produto = produtos[2])
+									.With(pedidoProduto => pedidoProduto.Quantidade = 3)
+								.Build())
 					.Build();
 		}
 	}

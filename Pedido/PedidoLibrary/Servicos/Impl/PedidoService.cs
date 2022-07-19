@@ -6,8 +6,9 @@ using PedidoLibrary.Util.Notificacoes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
-namespace PedidoLibrary.Servicos
+namespace PedidoLibrary.Servicos.Impl
 {
 	public class PedidoService : IPedidoService
 	{
@@ -46,14 +47,23 @@ namespace PedidoLibrary.Servicos
 
 		private static void AdicionarProdutoAoPedido(Pedido pedido, Produto produto, int quantidade)
 		{
-			if (pedido.ProdutosSelecionados.ContainsKey(produto))
+			var produtoJaSelecionado 
+				= pedido.ProdutosSelecionados
+					.FirstOrDefault(pedidoProduto => pedidoProduto.Produto == produto);
+
+			if (produtoJaSelecionado != null)
 			{
-				var quantidadeAtual = pedido.ProdutosSelecionados[produto];
-				pedido.ProdutosSelecionados[produto] = quantidadeAtual + quantidade;
+				produtoJaSelecionado.Quantidade += quantidade;
 			}
 			else
 			{
-				pedido.ProdutosSelecionados[produto] = quantidade;
+				pedido.ProdutosSelecionados.Add(
+					new PedidoProduto
+					{
+						Pedido = pedido,
+						Produto = produto,
+						Quantidade = quantidade
+					});
 			}
 		}
 
@@ -89,7 +99,7 @@ namespace PedidoLibrary.Servicos
 				Cliente = cliente,
 				EhExpress = ehExpress,
 				Estado = EstadoPedidoEnum.Aberto,
-				ProdutosSelecionados = new Dictionary<Produto, int>()
+				ProdutosSelecionados = new List<PedidoProduto>()
 			};
 
 			_pedidoRepository.Inserir(pedido);
@@ -128,14 +138,15 @@ namespace PedidoLibrary.Servicos
 			return _pedidoRepository.ObterPorId(idPedido);
 		}
 
-		public IList<Pedido> ObterPedidos(PedidoFilter filtro = null)
+		public async Task<IList<Pedido>> ObterPedidosAsync(PedidoFilter filtro = null)
 		{
-			var pedidos = _pedidoRepository.ObterTodos().AsQueryable();
+			var pedidos = await _pedidoRepository.ObterTodosAsync();
 
-			pedidos = AplicarFiltroTermo(filtro, pedidos);
-			pedidos = AplicarFiltroEstado(filtro, pedidos);
+			var pedidosQuery = pedidos.AsQueryable();
+			pedidosQuery = AplicarFiltroTermo(filtro, pedidosQuery);
+			pedidosQuery = AplicarFiltroEstado(filtro, pedidosQuery);
 
-			return pedidos.ToList();
+			return pedidosQuery.ToList();
 		}
 
 		private static IQueryable<Pedido> AplicarFiltroEstado(PedidoFilter filtro, IQueryable<Pedido> pedidos)
@@ -158,7 +169,9 @@ namespace PedidoLibrary.Servicos
 					p.Cliente.Nome.Contains(filtro.Termo)
 					|| p.Cliente.Cpf.Contains(filtro.Termo)
 					|| p.Cliente.Email.Contains(filtro.Termo)
-					|| p.ProdutosSelecionados.Keys.Any(produto => produto.Nome.Contains(filtro.Termo)));
+					|| (p.ProdutosSelecionados != null 
+						&& p.ProdutosSelecionados.Any(pedidoProduto => 
+							pedidoProduto.Produto.Nome.Contains(filtro.Termo))));
 			}
 
 			return pedidos;
@@ -177,12 +190,14 @@ namespace PedidoLibrary.Servicos
 			if (pedido == null)
 				throw new NegocioException(Mensagens.M03_PEDIDO_NAO_EXISTE);
 
-			if (!pedido.ProdutosSelecionados.ContainsKey(produto))
+			if (!pedido.ProdutosSelecionados.Any(pedidoProduto => pedidoProduto.Produto == produto))
 				throw new NegocioException(Mensagens.M08_PRODUTO_NAO_EXISTE_NO_PEDIDO);
 
 			if (!quantidade.HasValue)
 			{
-				pedido.ProdutosSelecionados.Remove(produto);
+				var pedidoProduto = pedido.ProdutosSelecionados.FirstOrDefault(pedidoProduto => pedidoProduto.Produto == produto);
+				if(pedidoProduto != null)
+					pedido.ProdutosSelecionados.Remove(pedidoProduto);
 			}
 			else
 			{
@@ -194,18 +209,25 @@ namespace PedidoLibrary.Servicos
 
 		private static void RemoverProdutoPorQuantidade(Produto produto, int? quantidade, Pedido pedido)
 		{
-			var quantidadeAtual = pedido.ProdutosSelecionados[produto];
+			var pedidoProduto = pedido.ProdutosSelecionados.FirstOrDefault(pedidoProduto => pedidoProduto.Produto == produto);
 
-			var novaQuantidade = quantidadeAtual - quantidade.Value;
+			if (pedidoProduto == null) return;
+
+			var novaQuantidade = pedidoProduto.Quantidade - quantidade.Value;
 
 			if (novaQuantidade < 1)
 			{
-				pedido.ProdutosSelecionados.Remove(produto);
+				pedido.ProdutosSelecionados.Remove(pedidoProduto);
 			}
 			else
 			{
-				pedido.ProdutosSelecionados[produto] = novaQuantidade;
+				pedidoProduto.Quantidade = novaQuantidade;
 			}
+		}
+
+		public IList<Pedido> ObterPedidos(PedidoFilter filtro = null)
+		{
+			return this.ObterPedidosAsync(filtro).Result;
 		}
 	}
 }

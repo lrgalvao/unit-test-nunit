@@ -2,7 +2,7 @@
 
 namespace PedidoLibrary.Repositorios
 {
-	public interface IPedidoRepository : IRepositoryBase<Pedido>
+	public interface IClienteRepository : IRepositoryBase<Cliente>
 	{
 
 	}

@@ -31,6 +31,23 @@ namespace PedidoLibrary.Tests.Util
 			Assert.IsTrue(cpfValido);
 		}
 
+		[TestCase("580.276.580-12", true)]
+		[TestCase("824.533.640-81", true)]
+		[TestCase("220.271.670-05", true)]
+		[TestCase("960.956.010-53", true)]
+		[TestCase(null, false)]
+		[TestCase("", false)]
+		[TestCase("000.000.111.11", false)]
+		[TestCase("101010101", false)]
+		public void StringUtilities_ValidarCpf(string cpf, bool resultadoEsperado)
+		{
+			// Act
+			var cpfValido = StringUtilities.ValidarCpf(cpf);
+
+			// Assert
+			Assert.AreEqual(cpfValido, resultadoEsperado);
+		}
+
 		[TestCase(null)]
 		[TestCase("")]
 		[TestCase("@email")]

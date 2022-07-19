@@ -1,9 +1,12 @@
-﻿using System;
+﻿using PedidoLibrary.Util;
+using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace PedidoLibrary.Entidades
 {
-	public class Produto
+	public class Produto : IEntity
 	{
+		[Key]
 		public Guid Id { get; set; }
 		public string Nome { get; set; }
 		public decimal Valor { get; set; }

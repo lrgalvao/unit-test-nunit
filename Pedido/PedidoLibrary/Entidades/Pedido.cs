@@ -2,15 +2,18 @@
 using PedidoLibrary.Util;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
 namespace PedidoLibrary.Entidades
 {
-	public class Pedido
+	public class Pedido : IEntity
 	{
+		[Key]
 		public Guid Id { get; set; }
 		public Cliente Cliente { get; set; }
-		public IDictionary<Produto, int> ProdutosSelecionados { get; set; }
+
+		public IList<PedidoProduto> ProdutosSelecionados { get; set; }
 		public EstadoPedidoEnum Estado { get; set; }
 		public bool EhExpress { get; set; }
 
@@ -21,8 +24,8 @@ namespace PedidoLibrary.Entidades
 			var produtosValidos 
 				= ProdutosSelecionados != null 
 				&& (!ProdutosSelecionados.Any() 
-					|| (ProdutosSelecionados.Keys.All(p => p.EhValido()) 
-						&& ProdutosSelecionados.Values.All(valor => valor > 0)));
+					|| (ProdutosSelecionados.All(p => p.Produto.EhValido()) 
+						&& ProdutosSelecionados.All(p => p.Quantidade > 0)));
 
 			return clienteValido && produtosValidos;
 		}
@@ -36,7 +39,7 @@ namespace PedidoLibrary.Entidades
 
 			if (ProdutosSelecionados != null && ProdutosSelecionados.Any())
 			{
-				return ProdutosSelecionados.Sum(p => p.Key.Valor * p.Value);
+				return ProdutosSelecionados.Sum(p => p.Produto.Valor * p.Quantidade);
 			}
 
 			return 0;

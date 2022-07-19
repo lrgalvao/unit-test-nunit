@@ -2,6 +2,7 @@
 using PedidoLibrary.Util;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PedidoLibrary.Servicos
 {
@@ -13,6 +14,7 @@ namespace PedidoLibrary.Servicos
 		void FinalizarPedido(Guid idPedido);
 		void CancelarPedido(Guid idPedido);
 		Pedido ObterPedido(Guid idPedido);
+		Task<IList<Pedido>> ObterPedidosAsync(PedidoFilter filtro = null);
 		IList<Pedido> ObterPedidos(PedidoFilter filtro = null);
 	}
 }

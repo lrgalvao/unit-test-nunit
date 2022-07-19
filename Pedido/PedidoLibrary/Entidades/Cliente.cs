@@ -1,10 +1,12 @@
 ﻿using PedidoLibrary.Util;
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace PedidoLibrary.Entidades
 {
-	public class Cliente
+	public class Cliente : IEntity
 	{
+		[Key]
 		public Guid Id { get; set; }
 		public string Nome { get; set; }
 		public string Sobrenome { get; set; }

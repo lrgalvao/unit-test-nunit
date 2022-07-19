@@ -6,5 +6,7 @@
 /Pedido/.vs
 /Pedido/PedidoLibrary/bin
 /Pedido/PedidoLibrary/obj
-/Pedido/PedidoLibrary.Tests/bin
-/Pedido/PedidoLibrary.Tests/obj
+/Pedido/PedidoLibrary.UnitTests/bin
+/Pedido/PedidoLibrary.UnitTests/obj
+/Pedido/PedidoLibrary.IntegrationTests/bin
+/Pedido/PedidoLibrary.IntegrationTests/obj

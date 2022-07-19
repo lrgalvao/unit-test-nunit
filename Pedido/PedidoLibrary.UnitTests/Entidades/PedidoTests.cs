@@ -69,7 +69,7 @@ namespace PedidoLibrary.Tests.Entidades
 		{
 			// Arrange
 			var pedido = ConstruirPedido();
-			pedido.ProdutosSelecionados.Keys.First().Valor = 0;
+			pedido.ProdutosSelecionados.First().Produto.Valor = 0;
 
 			// Act
 			var ehValido = pedido.EhValido();
@@ -83,8 +83,7 @@ namespace PedidoLibrary.Tests.Entidades
 		{
 			// Arrange
 			var pedido = ConstruirPedido();
-			var produto = pedido.ProdutosSelecionados.Keys.First();
-			pedido.ProdutosSelecionados[produto] = 0;
+			pedido.ProdutosSelecionados.First().Quantidade = 0;
 
 			// Act
 			var ehValido = pedido.EhValido();
@@ -95,7 +94,7 @@ namespace PedidoLibrary.Tests.Entidades
 
 		private static Pedido ConstruirPedido()
 		{
-			return new Pedido
+			var pedido = new Pedido
 			{
 				Id = Guid.NewGuid(),
 				Cliente = new Cliente
@@ -105,15 +104,33 @@ namespace PedidoLibrary.Tests.Entidades
 					Cpf = "580.276.580-12",
 					Email = "antonio.jobim@pitang.com"
 				},
-				ProdutosSelecionados = new Dictionary<Produto, int>
-				{
-					{ new Produto { Id = Guid.NewGuid(), Nome = "Produto 1", Valor = 30, DisponivelExpress = false }, 2 },
-					{ new Produto { Id = Guid.NewGuid(), Nome = "Produto 2", Valor = 20, DisponivelExpress = false }, 1 },
-					{ new Produto { Id = Guid.NewGuid(), Nome = "Produto 3", Valor = 40, DisponivelExpress = false }, 3 }
-				},
 				EhExpress = false,
 				Estado = EstadoPedidoEnum.Aberto
 			};
+
+			pedido.ProdutosSelecionados = new List<PedidoProduto>()
+			{
+				new PedidoProduto
+				{
+					Pedido = pedido,
+					Produto = new Produto { Id = Guid.NewGuid(), Nome = "Produto 1", Valor = 30, DisponivelExpress = false },
+					Quantidade = 2
+				},
+				new PedidoProduto
+				{
+					Pedido = pedido,
+					Produto = new Produto { Id = Guid.NewGuid(), Nome = "Produto 2", Valor = 20, DisponivelExpress = false },
+					Quantidade = 1
+				},
+				new PedidoProduto
+				{
+					Pedido = pedido,
+					Produto = new Produto { Id = Guid.NewGuid(), Nome = "Produto 3", Valor = 40, DisponivelExpress = false },
+					Quantidade = 3
+				}
+			};
+
+			return pedido;
 		}
 	}
 }
